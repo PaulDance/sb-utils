@@ -15,14 +15,15 @@ export PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-argErrorCode=1
+argErrorCode=1										# Parameters
 intErrorCode=2
 intErrorDoc="Internal error. Exiting now."
 missModNameErrorDoc="Missing kernel module's name. Exiting now."
-myName="$(basename $0)"
 txtFileType="text/plain; charset=us-ascii"
 binFileType="application/octet-stream; charset=binary"
+myName="$(basename $0)"
 
+# Documentation strings.
 read -r -d '' usageDoc << EOF
 Usage:  $myName  -h | --help
 	$myName [-t | --test]
@@ -66,17 +67,18 @@ $descDoc
 EOF
 
 
+# Arguments parsing, reports its own errors.
 argsTmp=$(getopt -o "h,t,m:" -l "help,test,module:" -n "$myName" -s "bash" -- "$@")
 
-if [[ "$?" -ne "0" ]]; then
-	echo -e "\n$usageDoc" >&2
-	exit $argErrorCode
+if [[ "$?" -ne "0" ]]; then							# In case the parsing threw an error,
+	echo -e "\n$usageDoc" >&2						# just report the usage because it is
+	exit $argErrorCode								# often due to misuse of arguments.
 fi
 
-eval set -- "$argsTmp"
-unset argsTmp
+eval set -- "$argsTmp"								# Making the parsed arguments mine.
+unset argsTmp										# Freeing the temporary variable.
 
-while true; do
+while true; do										# Arguments management
 	case "$1" in
 		"-h"|"--help")
 			echo "$helpDoc"
@@ -103,49 +105,48 @@ while true; do
 	esac
 done
 
-for otherArg; do
-	echo "Unknown argument: '$otherArg'" >&2
+for otherArg; do									# When more arguments are given,
+	echo "Unknown argument: '$otherArg'" >&2		# give an error for each of them
 	unknArgDet="true"
 done
 if [[ "$unknArgDet" = "true" ]]; then
-	echo -e "\n$usageDoc" >&2
+	echo -e "\n$usageDoc" >&2						# and give the usage, as no further
+	exit $argErrorCode								# arguments are expected.
+fi
+
+if [[ -z "${modName+x}" ]]; then					# If execution has gone this far,
+	echo "$missModNameErrorDoc" >&2					# the module name is mandatory.
 	exit $argErrorCode
 fi
 
-if [[ -z "${modName+x}" ]]; then
-	echo "$missModNameErrorDoc" >&2
-	exit $argErrorCode
-fi
 
-
-exit 0
-function signMod() {
-	set -e
+function signMod() {								# Handles the signing itself.
+	set -e											# It stops as soon as an error pops;
 
 	if [[ -f "$modName.der" ]] && ! sudo mokutil -t "$modName.der"; then
 		echo "[*] Deleting $modName's previous signing key..."
-		sudo mokutil --delete "$modName.der"
-		echo '[*] Done.'
+		sudo mokutil --delete "$modName.der"		# if an older key is registered in
+		echo '[*] Done.'							# the MOK manager, delete it;
 	fi
 	
 	echo "[*] Generating new $modName signing keys..."
 	openssl req -new -x509 -newkey rsa:4096 -keyout "$modName.priv" -outform DER -out "$modName.der" -nodes -days 3650 -subj "/CN=$modName kernel module signing key/"
-	echo '[*] Done.'
+	echo '[*] Done.'								# generate a new key pair,
 	
 	echo '[*] Signing module ...'
 	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 "./$modName.priv" "./$modName.der" "$(sudo modinfo -n $modName)"
-	echo '[*] Done.'
+	echo '[*] Done.'								# sign the module with it
 	
 	echo '[*] Registering keys to the MOK manager...'
-	sudo mokutil --import "./$modName.der"
+	sudo mokutil --import "./$modName.der"			# and import it in the MOK manager.
 	echo -e '[*] Done.\n'
 	
 	echo '[*] You should now reboot the system and enroll the new MOK.'
 }
 
-function testMod() {
+function testMod() {								# Runs a few helper tests.
 	echo '[*] Starting tests...'
-	modInfo="$(sudo modinfo $modName)"
+	modInfo="$(sudo modinfo $modName)"				# Trying if the module exists;
 
 	if [[ "$?" -eq "0" ]]; then
 		echo -e "[*] The given module is:\n\n$modInfo\n"
@@ -153,35 +154,35 @@ function testMod() {
 		echo -e "[*] The given module doesn't seem to exist on the current system." >&2
 	fi
 
-	if [[ -f "$modName.priv" ]]; then
+	if [[ -f "$modName.priv" ]]; then				# checking if a private key file exists
 		echo "[*] $modName.priv is a file in the current directory."
 		local fileInfo="$(file -b -i $modName.priv)"
 
-		if [[ "$fileInfo" = "$txtFileType" ]]; then
+		if [[ "$fileInfo" = "$txtFileType" ]]; then	# and is a text file;
 			echo -e "\tIt seems to be a text file."
 		else
 			echo -e "\tBut it doesn't seem to be a text file: '$fileInfo'." >&2
 		fi
 	fi
 
-	if [[ -f "$modName.der" ]]; then
+	if [[ -f "$modName.der" ]]; then				# checking if a DER public key file exists,
 		echo "[*] $modName.der is a file in the current directory."
 		local fileInfo="$(file -b -i $modName.der)"
 		
-		if [[ "$fileInfo" = "$binFileType" ]]; then
+		if [[ "$fileInfo" = "$binFileType" ]]; then # is a binary data file
 			echo -e "\tIt seems to be a binary data file."
 		else
 			echo -e "\tBut it doesn't seem to be a binary data file: '$fileInfo'." >&2
 		fi
 		
-		echo "$(sudo mokutil -t $modName.der)"
+		echo "$(sudo mokutil -t $modName.der)"		# and its state in the MOK manager.
 	fi
 
 	echo "[*] Done."
 }
 
 
-if [[ "$toTest" = "true" ]]; then
+if [[ "$toTest" = "true" ]]; then					# Choosing between test and signing.
 	testMod
 else
 	signMod
