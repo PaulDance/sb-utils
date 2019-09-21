@@ -122,7 +122,7 @@ fi
 
 function signMod() {								# Handles the signing itself.
 	set -e											# It stops as soon as an error pops;
-
+	
 	if [[ -f "$modName.der" ]] && ! sudo mokutil -t "$modName.der"; then
 		echo "[*] Deleting $modName's previous signing key..."
 		sudo mokutil --delete "$modName.der"		# if an older key is registered in
@@ -147,24 +147,24 @@ function signMod() {								# Handles the signing itself.
 function testMod() {								# Runs a few helper tests.
 	echo '[*] Starting tests...'
 	modInfo="$(sudo modinfo $modName)"				# Trying if the module exists;
-
+	
 	if [[ "$?" -eq "0" ]]; then
 		echo -e "[*] The given module is:\n\n$modInfo\n"
 	else
 		echo -e "[*] The given module doesn't seem to exist on the current system." >&2
 	fi
-
+	
 	if [[ -f "$modName.priv" ]]; then				# checking if a private key file exists
 		echo "[*] $modName.priv is a file in the current directory."
 		local fileInfo="$(file -b -i $modName.priv)"
-
+		
 		if [[ "$fileInfo" = "$txtFileType" ]]; then	# and is a text file;
 			echo -e "\tIt seems to be a text file."
 		else
 			echo -e "\tBut it doesn't seem to be a text file: '$fileInfo'." >&2
 		fi
 	fi
-
+	
 	if [[ -f "$modName.der" ]]; then				# checking if a DER public key file exists,
 		echo "[*] $modName.der is a file in the current directory."
 		local fileInfo="$(file -b -i $modName.der)"
@@ -177,7 +177,8 @@ function testMod() {								# Runs a few helper tests.
 		
 		echo "$(sudo mokutil -t $modName.der)"		# and its state in the MOK manager.
 	fi
-
+	
+	unset modInfo									# Cleaning variables.
 	echo "[*] Done."
 }
 
