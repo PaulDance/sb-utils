@@ -2,6 +2,9 @@
 
 
 argErrorCode=1
+intErrorCode=2
+intErrorDoc="Internal error. Exiting now."
+missModNameErrorDoc="Missing kernel module's name. Exiting now."
 myName="$(basename $0)"
 txtFileType="text/plain; charset=us-ascii"
 binFileType="application/octet-stream; charset=binary"
@@ -15,11 +18,12 @@ EOF
 read -r -d '' paramsDoc << EOF
 Parameters:
 	-h | --help: Prints the help message and stops.
-	-t | --test: Tests a few things: if the given kernel module name references
-		an existing module on the current system; if a <kernelModuleName>.der
-		signature data file exists in the current directory; the current state
-		of the .der file in the MOK manager.
-	-m | --module <kernelModuleName>: The kernel module's name.
+	-t | --test: Optionally, tests a few things: if the given kernel module
+		name references	an existing module on the current system; if a
+		<kernelModuleName>.der signature data file exists in the current
+		directory; the current state of the .der file in the MOK manager.
+	-m | --module <kernelModuleName>: The kernel module's name, mandatory
+		when managing a kernel module.
 EOF
 
 read -r -d '' descDoc << EOF
@@ -49,6 +53,12 @@ EOF
 
 
 argsTmp=$(getopt -o "h,t,m:" -l "help,test,module:" -n "$myName" -s "bash" -- "$@")
+
+if [[ "$?" -ne "0" ]]; then
+	echo -e "\n$usageDoc" >&2
+	exit $argErrorCode
+fi
+
 eval set -- "$argsTmp"
 unset argsTmp
 
@@ -68,15 +78,33 @@ while true; do
 			shift 2
 			continue
 		;;
-		*)
+		"--")
+			shift
 			break
-			#echo "$usageDoc" >&2
-			#exit $argErrorCode
+		;;
+		*)
+			echo "$intErrorDoc" >&2
+			exit $intErrorCode
 		;;
 	esac
 done
 
+for otherArg; do
+	echo "Unknown argument: '$otherArg'" >&2
+	unknArgDet="true"
+done
+if [[ "$unknArgDet" = "true" ]]; then
+	echo -e "\n$usageDoc" >&2
+	exit $argErrorCode
+fi
 
+if [[ -z "${modName+x}" ]]; then
+	echo "$missModNameErrorDoc" >&2
+	exit $argErrorCode
+fi
+
+
+exit 0
 function signMod() {
 	set -e
 
