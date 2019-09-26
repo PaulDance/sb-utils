@@ -245,7 +245,7 @@ function testMod() {								# Runs a few helper tests.
 	if [[ "$?" -eq "0" ]]; then
 		echo -e "[*] The given module is:\n\n$modInfo\n"
 	else
-		echo -e "[*] The given module doesn't seem to exist on the current system." >&2
+		echo "[*] The given module doesn't seem to exist on the current system." >&2
 	fi
 	
 	if [[ -f "$modName.priv" ]]; then				# checking if a private key file exists
