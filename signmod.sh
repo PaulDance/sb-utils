@@ -5,12 +5,12 @@ export PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
@@ -163,6 +163,8 @@ function testMod() {								# Runs a few helper tests.
 		else
 			echo -e "\tBut it doesn't seem to be a text file: '$fileInfo'." >&2
 		fi
+	else
+		echo "[*] $modName.priv is NOT a file in the current directory."
 	fi
 	
 	if [[ -f "$modName.der" ]]; then				# checking if a DER public key file exists,
@@ -176,6 +178,8 @@ function testMod() {								# Runs a few helper tests.
 		fi
 		
 		echo "$(sudo mokutil -t $modName.der)"		# and its state in the MOK manager.
+	else
+		echo "[*] $modName.der is NOT a file in the current directory."
 	fi
 	
 	unset modInfo									# Cleaning variables.
