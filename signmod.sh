@@ -122,23 +122,23 @@ function contains() {								# Tests if $2 is in list $1.
     [[ "$1" =~ (^| )$2($| ) ]] && return 0 || return 1
 }
 
-while true; do										# Arguments management
+while true; do										# Arguments management:
 	case "$1" in
-		"-h" | "--help")
+		"-h" | "--help")							# Help
 			echo "$helpDoc"
 			exit 0
 		;;
-		"-t" | "--test")
+		"-t" | "--test")							# Test module
 			toTest="true"
 			shift
 			continue
 		;;
-		"-m" | "--module")
+		"-m" | "--module")							# Module name
 			modName="$2"
 			shift 2
 			continue
 		;;
-		"-d" | "--directory")
+		"-d" | "--directory")						# Working directory
 			baseDir="$2"
 			dirAdj="given"
 			
@@ -152,34 +152,34 @@ while true; do										# Arguments management
 			shift 2
 			continue
 		;;
-		"-s" | "--key-size")
+		"-s" | "--key-size")						# RSA key size
 			keySize="$2"
 			
 			if ! [[ "$keySize" =~ ^[0-9]{1,4}$ ]]; then
-				echo "$invalidKeySizeErrorDoc" >&2
-				exit $argErrorCode
+				echo "$invalidKeySizeErrorDoc" >&2	# The key size should be a 1 to 4 digits
+				exit $argErrorCode					# integer (max 4096), otherwise throw error.
 			fi
 			
 			shift 2
 			continue
 		;;
-		"-c" | "--cert-dur")
+		"-c" | "--cert-dur")						# Certificate duration
 			certDur="$2"
 			
 			if ! [[ "$certDur" =~ ^[0-9]+$ ]]; then
-				echo "$invalidCertDurErrorDoc" >&2
-				exit $argErrorCode
+				echo "$invalidCertDurErrorDoc" >&2	# The duration should be at least one digit
+				exit $argErrorCode					# long, otherwise throw an error.
 			fi
 			
 			shift 2
 			continue
 		;;
-		"-a" | "--sign-algo")
+		"-a" | "--sign-algo")						# Signature hash algorithm
 			signAlgo="$2"
 			
 			if ! contains "$signAlgosList" "$signAlgo"; then
-				echo "$invalidSignAlgoErrorDoc" >&2
-				exit $argErrorCode
+				echo "$invalidSignAlgoErrorDoc" >&2	# Only a value from a precise list of
+				exit $argErrorCode					# algorithms is expected, else error.
 			fi
 			
 			shift 2
@@ -187,7 +187,7 @@ while true; do										# Arguments management
 		;;
 		"--")										# This case is used by getopt to inform
 			shift									# us that no more option arguments are
-			break									# to be expected, so we can stop here;
+			break									# to be expected, so we can stop here,
 		;;
 		*)											# but if "--" wasn't encountered after
 			echo "$intErrorDoc" >&2					# checking for all the options, then it
