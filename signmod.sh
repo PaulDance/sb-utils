@@ -22,14 +22,17 @@ missModNameErrorDoc="Missing kernel module's name. Exiting now."
 wrongDirErrorDoc="is not an existing directory. Exiting now."
 invalidKeySizeErrorDoc="The given key size is not valid. Exiting now."
 invalidCertDurErrorDoc="The given certificate duration is not valid. Exiting now."
+invalidSignAlgoErrorDoc="The given signature hash algorithm is not valid. Exiting now."
 txtFileType="text/plain; charset=us-ascii"
 binFileType="application/octet-stream; charset=binary"
+signAlgosList="sha1 sha224 sha256 sha384 sha512"
 
 myName="$(basename $0)"								# Default parameters.
 baseDir="."
 dirAdj="current"
 keySize="4096"
 certDur="1825"
+signAlgo="sha512"
 
 # Documentation strings.
 read -r -d '' usageDoc << EOF
@@ -38,6 +41,7 @@ Usage:  $myName  -h | --help
 		   [-d | --directory] <dirName>
 		   [-s | --key-size] <keySize>
 		   [-c | --cert-dur] <certDur>
+		   [-a | --sign-algo] <signAlgo>
 		    -m | --module <kernelModuleName>
 EOF
 
@@ -58,6 +62,9 @@ Parameters:
 	-c | --cert-dur <certDur>: The duration in days the generated certificate
 		- i.e. the RSA key pair - should be valid for. If not provided, it
 		defaults to 5 * 365 = 1825 days.
+	-a | --sign-algo <signAlgo>: The hash algorithm that should be used to
+		sign the module with. Supported values are: sha1, sha224, sha256,
+		sha384 and sha512. If not provided, it defaults to sha512.
 	-m | --module <kernelModuleName>: The kernel module's name, mandatory
 		when managing a kernel module.
 EOF
@@ -97,8 +104,8 @@ if [[ "$#" -eq "0" ]]; then							# If there are no arguments given,
 fi
 
 # Arguments parsing, reports its own errors.
-argsTmp=$(getopt -o "h,t,m:,d:,s:,c:"\
-			-l "help,test,module:,directory:,key-size:,cert-dur:"\
+argsTmp=$(getopt -o "h,t,m:,d:,s:,c:,a:"\
+			-l "help,test,module:,directory:,key-size:,cert-dur:,sign-algo:"\
 			-n "$myName"\
 			-s "bash"\
 			-- "$@")
@@ -110,6 +117,10 @@ fi
 
 eval set -- "$argsTmp"								# Making the parsed arguments mine.
 unset argsTmp										# Freeing the temporary variable.
+
+function contains() {								# Tests if $2 is in list $1.
+    [[ "$1" =~ (^| )$2($| ) ]] && return 0 || return 1
+}
 
 while true; do										# Arguments management
 	case "$1" in
@@ -163,6 +174,17 @@ while true; do										# Arguments management
 			shift 2
 			continue
 		;;
+		"-a" | "--sign-algo")
+			signAlgo="$2"
+			
+			if ! contains "$signAlgosList" "$signAlgo"; then
+				echo "$invalidSignAlgoErrorDoc" >&2
+				exit $argErrorCode
+			fi
+			
+			shift 2
+			continue
+		;;
 		"--")										# This case is used by getopt to inform
 			shift									# us that no more option arguments are
 			break									# to be expected, so we can stop here;
@@ -205,7 +227,7 @@ function signMod() {								# Handles the signing itself.
 	echo '[*] Done.'								# generate a new key pair,
 	
 	echo '[*] Signing module ...'
-	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256\
+	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$signAlgo"\
 		"./$modName.priv" "./$modName.der" "$(sudo modinfo -n $modName)"
 	echo '[*] Done.'								# sign the module with it
 	
