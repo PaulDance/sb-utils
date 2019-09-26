@@ -162,11 +162,14 @@ function signMod() {								# Handles the signing itself.
 	fi
 	
 	echo "[*] Generating new $modName signing keys..."
-	openssl req -new -x509 -newkey rsa:4096 -keyout "$modName.priv" -outform DER -out "$modName.der" -nodes -days 3650 -subj "/CN=$modName kernel module signing key/"
+	openssl req -new -x509 -newkey rsa:4096 -keyout "$modName.priv"\
+				-outform DER -out "$modName.der" -nodes -days 3650\
+				-subj "/CN=$modName kernel module signing key/"
 	echo '[*] Done.'								# generate a new key pair,
 	
 	echo '[*] Signing module ...'
-	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 "./$modName.priv" "./$modName.der" "$(sudo modinfo -n $modName)"
+	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256\
+		"./$modName.priv" "./$modName.der" "$(sudo modinfo -n $modName)"
 	echo '[*] Done.'								# sign the module with it
 	
 	echo '[*] Registering keys to the MOK manager...'
