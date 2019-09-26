@@ -75,10 +75,11 @@ Description:
 		* Generate a new public-private (by default 4096b) RSA key pair
 		  and write it to <kernelModuleName>.der and <kernelModuleName>
 		  .priv files.
-		* Sign the module's kernel object file itself.
-		* Register the new key to the MOK manager.
+		* Sign the module's kernel object file.
+		* Enroll the new key to the MOK manager.
 	
-	When it is done and that no error was thrown, you can reboot the system.
+	When it is done and that no error was thrown, you should reboot the system
+	in order to perform the registered MOK managing actions.
 EOF
 
 read -r -d '' helpDoc << EOF
