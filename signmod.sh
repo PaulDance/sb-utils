@@ -77,6 +77,11 @@ $descDoc
 EOF
 
 
+if [[ "$#" -eq "0" ]]; then							# If there are no arguments given,
+	echo "$usageDoc" >&2							# give the usage documentation.
+	exit $argErrorCode
+fi
+
 # Arguments parsing, reports its own errors.
 argsTmp=$(getopt -o "h,t,m:,d:"\
 			-l "help,test,module:,directory:"\
