@@ -15,18 +15,23 @@ export PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-argErrorCode=1										# Parameters
+argErrorCode=1										# Constants.
 intErrorCode=2
 intErrorDoc="Internal error. Exiting now."
 missModNameErrorDoc="Missing kernel module's name. Exiting now."
+wrongDirErrorDoc="is not an existing directory. Exiting now."
 txtFileType="text/plain; charset=us-ascii"
 binFileType="application/octet-stream; charset=binary"
-myName="$(basename $0)"
+
+myName="$(basename $0)"								# Default parameters.
+baseDir="."
+dirAdj="current"
 
 # Documentation strings.
 read -r -d '' usageDoc << EOF
 Usage:  $myName  -h | --help
 	$myName [-t | --test]
+		   [-d | --directory] <dirName>
 		    -m | --module <kernelModuleName>
 EOF
 
@@ -37,6 +42,10 @@ Parameters:
 		name references	an existing module on the current system; if a
 		<kernelModuleName>.der signature data file exists in the current
 		directory; the current state of the .der file in the MOK manager.
+	-d | --directory <dirName>: The directory where the script should cd into
+		in order to read and write files necessary for its functionalities.
+		By default, it is the current working directory, i.e. where the
+		script is called and not where it is stored.
 	-m | --module <kernelModuleName>: The kernel module's name, mandatory
 		when managing a kernel module.
 EOF
@@ -47,9 +56,10 @@ Description:
 	SecureBoot is enabled. Provide the kernel module's name and the script
 	will, in order:
 		* Check if the module was previously signed by testing if a file
-		  <kernelModuleName>.der exists or not in the current directory
-		  and was used to register a key to the MOK manager. If it does,
-		  then it removes the previous signature from the MOK manager.
+		  <kernelModuleName>.der exists or not in the current or given
+		  directory and was used to register a key to the MOK manager. If
+		  it does, then it removes the previous signature from the MOK
+		  manager.
 		* Generate a new public-private 4096b RSA key pair and write it
 		  to <kernelModuleName>.der and <kernelModuleName>.priv files.
 		* Sign the module's kernel object file itself.
@@ -68,7 +78,11 @@ EOF
 
 
 # Arguments parsing, reports its own errors.
-argsTmp=$(getopt -o "h,t,m:" -l "help,test,module:" -n "$myName" -s "bash" -- "$@")
+argsTmp=$(getopt -o "h,t,m:,d:"\
+			-l "help,test,module:,directory:"\
+			-n "$myName"\
+			-s "bash"\
+			-- "$@")
 
 if [[ "$?" -ne "0" ]]; then							# In case the parsing threw an error,
 	echo -e "\n$usageDoc" >&2						# just report the usage because it is
@@ -94,13 +108,19 @@ while true; do										# Arguments management
 			shift 2
 			continue
 		;;
-		"--")
-			shift
-			break
+		"-d"|"--directory")
+			baseDir="$2"
+			dirAdj="given"
+			shift 2
+			continue
 		;;
-		*)
-			echo "$intErrorDoc" >&2
-			exit $intErrorCode
+		"--")										# This case is used by getopt to inform
+			shift									# us that no more option arguments are
+			break									# to be expected, so we can stop here;
+		;;
+		*)											# but if "--" wasn't encountered after
+			echo "$intErrorDoc" >&2					# checking for all the options, then it
+			exit $intErrorCode						# means there is a programming mistake.
 		;;
 	esac
 done
@@ -116,6 +136,13 @@ fi
 
 if [[ -z "${modName+x}" ]]; then					# If execution has gone this far,
 	echo "$missModNameErrorDoc" >&2					# the module name is mandatory.
+	exit $argErrorCode
+fi
+
+if [[ -d "$baseDir" ]]; then						# Check if the given directory exists:
+	cd "$baseDir"									# if so, then go in it,
+else
+	echo "$baseDir $wrongDirErrorDoc" >&2			# otherwise report an error.
 	exit $argErrorCode
 fi
 
@@ -155,7 +182,7 @@ function testMod() {								# Runs a few helper tests.
 	fi
 	
 	if [[ -f "$modName.priv" ]]; then				# checking if a private key file exists
-		echo "[*] $modName.priv is a file in the current directory."
+		echo "[*] $modName.priv is a file in the $dirAdj directory."
 		local fileInfo="$(file -b -i $modName.priv)"
 		
 		if [[ "$fileInfo" = "$txtFileType" ]]; then	# and is a text file;
@@ -164,11 +191,11 @@ function testMod() {								# Runs a few helper tests.
 			echo -e "\tBut it doesn't seem to be a text file: '$fileInfo'." >&2
 		fi
 	else
-		echo "[*] $modName.priv is NOT a file in the current directory."
+		echo "[*] $modName.priv is NOT a file in the $dirAdj directory."
 	fi
 	
 	if [[ -f "$modName.der" ]]; then				# checking if a DER public key file exists,
-		echo "[*] $modName.der is a file in the current directory."
+		echo "[*] $modName.der is a file in the $dirAdj directory."
 		local fileInfo="$(file -b -i $modName.der)"
 		
 		if [[ "$fileInfo" = "$binFileType" ]]; then # is a binary data file
@@ -179,7 +206,7 @@ function testMod() {								# Runs a few helper tests.
 		
 		echo "$(sudo mokutil -t $modName.der)"		# and its state in the MOK manager.
 	else
-		echo "[*] $modName.der is NOT a file in the current directory."
+		echo "[*] $modName.der is NOT a file in the $dirAdj directory."
 	fi
 	
 	unset modInfo									# Cleaning variables.
