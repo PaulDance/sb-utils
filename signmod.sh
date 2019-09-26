@@ -20,18 +20,24 @@ intErrorCode=2
 intErrorDoc="Internal error. Exiting now."
 missModNameErrorDoc="Missing kernel module's name. Exiting now."
 wrongDirErrorDoc="is not an existing directory. Exiting now."
+invalidKeySizeErrorDoc="The given key size is not valid. Exiting now."
+invalidCertDurErrorDoc="The given certificate duration is not valid. Exiting now."
 txtFileType="text/plain; charset=us-ascii"
 binFileType="application/octet-stream; charset=binary"
 
 myName="$(basename $0)"								# Default parameters.
 baseDir="."
 dirAdj="current"
+keySize="4096"
+certDur="1825"
 
 # Documentation strings.
 read -r -d '' usageDoc << EOF
 Usage:  $myName  -h | --help
 	$myName [-t | --test]
 		   [-d | --directory] <dirName>
+		   [-s | --key-size] <keySize>
+		   [-c | --cert-dur] <certDur>
 		    -m | --module <kernelModuleName>
 EOF
 
@@ -44,8 +50,14 @@ Parameters:
 		directory; the current state of the .der file in the MOK manager.
 	-d | --directory <dirName>: The directory where the script should cd into
 		in order to read and write files necessary for its functionalities.
-		By default, it is the current working directory, i.e. where the
-		script is called and not where it is stored.
+		If not provided, it defaults the current working directory, i.e.
+		where the script is called and not where it is stored.
+	-s | --key-size <keySize>: The RSA key size to use when generating a
+		new public-private key pair to sign the module with. This option
+		is not used when only testing. If not provided, it defaults to 4096.
+	-c | --cert-dur <certDur>: The duration in days the generated certificate
+		- i.e. the RSA key pair - should be valid for. If not provided, it
+		defaults to 5 * 365 = 1825 days.
 	-m | --module <kernelModuleName>: The kernel module's name, mandatory
 		when managing a kernel module.
 EOF
@@ -60,8 +72,9 @@ Description:
 		  directory and was used to register a key to the MOK manager. If
 		  it does, then it removes the previous signature from the MOK
 		  manager.
-		* Generate a new public-private 4096b RSA key pair and write it
-		  to <kernelModuleName>.der and <kernelModuleName>.priv files.
+		* Generate a new public-private (by default 4096b) RSA key pair
+		  and write it to <kernelModuleName>.der and <kernelModuleName>
+		  .priv files.
 		* Sign the module's kernel object file itself.
 		* Register the new key to the MOK manager.
 	
@@ -83,8 +96,8 @@ if [[ "$#" -eq "0" ]]; then							# If there are no arguments given,
 fi
 
 # Arguments parsing, reports its own errors.
-argsTmp=$(getopt -o "h,t,m:,d:"\
-			-l "help,test,module:,directory:"\
+argsTmp=$(getopt -o "h,t,m:,d:,s:,c:"\
+			-l "help,test,module:,directory:,key-size:,cert-dur:"\
 			-n "$myName"\
 			-s "bash"\
 			-- "$@")
@@ -99,23 +112,53 @@ unset argsTmp										# Freeing the temporary variable.
 
 while true; do										# Arguments management
 	case "$1" in
-		"-h"|"--help")
+		"-h" | "--help")
 			echo "$helpDoc"
 			exit 0
 		;;
-		"-t"|"--test")
+		"-t" | "--test")
 			toTest="true"
 			shift
 			continue
 		;;
-		"-m"|"--module")
+		"-m" | "--module")
 			modName="$2"
 			shift 2
 			continue
 		;;
-		"-d"|"--directory")
+		"-d" | "--directory")
 			baseDir="$2"
 			dirAdj="given"
+			
+			if [[ -d "$baseDir" ]]; then			# Check if the given directory exists:
+				cd "$baseDir"						# if so, then go in it,
+			else
+				echo "$baseDir $wrongDirErrorDoc" >&2
+				exit $argErrorCode					# otherwise report an error.
+			fi
+			
+			shift 2
+			continue
+		;;
+		"-s" | "--key-size")
+			keySize="$2"
+			
+			if ! [[ "$keySize" =~ ^[0-9]{1,4}$ ]]; then
+				echo "$invalidKeySizeErrorDoc" >&2
+				exit $argErrorCode
+			fi
+			
+			shift 2
+			continue
+		;;
+		"-c" | "--cert-dur")
+			certDur="$2"
+			
+			if ! [[ "$certDur" =~ ^[0-9]+$ ]]; then
+				echo "$invalidCertDurErrorDoc" >&2
+				exit $argErrorCode
+			fi
+			
 			shift 2
 			continue
 		;;
@@ -144,13 +187,6 @@ if [[ -z "${modName+x}" ]]; then					# If execution has gone this far,
 	exit $argErrorCode
 fi
 
-if [[ -d "$baseDir" ]]; then						# Check if the given directory exists:
-	cd "$baseDir"									# if so, then go in it,
-else
-	echo "$baseDir $wrongDirErrorDoc" >&2			# otherwise report an error.
-	exit $argErrorCode
-fi
-
 
 function signMod() {								# Handles the signing itself.
 	set -e											# It stops as soon as an error pops;
@@ -162,8 +198,8 @@ function signMod() {								# Handles the signing itself.
 	fi
 	
 	echo "[*] Generating new $modName signing keys..."
-	openssl req -new -x509 -newkey rsa:4096 -keyout "$modName.priv"\
-				-outform DER -out "$modName.der" -nodes -days 3650\
+	openssl req -new -x509 -newkey rsa:"$keySize" -keyout "$modName.priv"\
+				-outform DER -out "$modName.der" -nodes -days "$certDur"\
 				-subj "/CN=$modName kernel module signing key/"
 	echo '[*] Done.'								# generate a new key pair,
 	
