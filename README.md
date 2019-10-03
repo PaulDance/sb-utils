@@ -20,6 +20,13 @@ directory in order to copy the script file to `/usr/bin/` and give it proper
 execution rights, thus making it available to all, without having to use the path
 leading to the repository.
 
+In case a file `signmod.sh` already exists in `/usr/bin/`, then it will first try
+to `stat` it to determine if its modification date is newer than the local file
+stored in the repo: if it is not, then it will warn you and ask if it should force
+the copying or not - i.e. replace the file named `signmod.sh` in `/usr/bin/` by
+the one in the repo.
+
+
 
 ## signmod.sh
 
