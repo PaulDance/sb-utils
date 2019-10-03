@@ -15,6 +15,11 @@ and it will get the entire repository. If you don't have access to shell or don'
 have git installed on your current system, you can also use the "Download as ZIP"
 button to download the tracked files only.
 
+Then, optionnaly, you can run `make install` from a shell in the repository
+directory in order to copy the script file to `/usr/bin/` and give it proper
+execution rights, thus making it available to all, without having to use the path
+leading to the repository.
+
 
 ## signmod.sh
 
