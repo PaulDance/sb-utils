@@ -246,7 +246,7 @@ function signMod() {								# Handles the signing itself.
 	if [[ -f "$modName.der" ]] && ! sudo mokutil -t "$modName.der"; then
 		echo "$logHeader""Deleting $modName's previous signing key..."
 		sudo mokutil --delete "$modName.der"		# if an older key is registered in
-		echo "$logHeader""Done."							# the MOK manager, delete it;
+		echo "$logHeader""Done."					# the MOK manager, delete it;
 	fi
 	
 	echo "$logHeader""Generating new $modName signing keys..."
@@ -254,12 +254,12 @@ function signMod() {								# Handles the signing itself.
 				-outform DER -out "$modName.der" "$osslEncrypt" -days "$certDur"\
 				-subj "/CN=$modName kernel module signing key/" -utf8\
 				-"$signAlgo" "$osslVerbosity"
-	echo "$logHeader""Done."								# generate a new key pair,
+	echo "$logHeader""Done."						# generate a new key pair,
 	
-	echo "$logHeader""Signing module ..."
+	echo "$logHeader""Signing module..."
 	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$signAlgo"\
 		"./$modName.priv" "./$modName.der" "$(sudo modinfo -n $modName)"
-	echo "$logHeader""Done."								# sign the module with it
+	echo "$logHeader""Done."						# sign the module with it
 	
 	echo "$logHeader""Registering keys to the MOK manager..."
 	sudo mokutil --import "./$modName.der"			# and import it in the MOK manager.
