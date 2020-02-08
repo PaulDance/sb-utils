@@ -33,11 +33,14 @@ dirAdj="current"
 keySize="4096"
 certDur="1825"
 signAlgo="sha512"
+osslVerbosity=""
+muVerbosity="false"
 
 # Documentation strings.
 read -r -d '' usageDoc << EOF
 Usage:  $myName  -h | --help
 	$myName [-t | --test]
+		   [-v | --verbose]
 		   [-d | --directory] <dirName>
 		   [-s | --key-size] <keySize>
 		   [-c | --cert-dur] <certDur>
@@ -52,6 +55,7 @@ Parameters:
 		name references	an existing module on the current system; if a
 		<kernelModuleName>.der signature data file exists in the current
 		directory; the current state of the .der file in the MOK manager.
+	-v | --verbose: Activate further output verbosity.
 	-d | --directory <dirName>: The directory where the script should cd into
 		in order to read and write files necessary for its functionalities.
 		If not provided, it defaults the current working directory, i.e.
@@ -104,8 +108,8 @@ if [[ "$#" -eq "0" ]]; then							# If there are no arguments given,
 fi
 
 # Arguments parsing, reports its own errors.
-argsTmp=$(getopt -o "h,t,m:,d:,s:,c:,a:"\
-			-l "help,test,module:,directory:,key-size:,cert-dur:,sign-algo:"\
+argsTmp=$(getopt -o "h,t,v,m:,d:,s:,c:,a:"\
+			-l "help,test,verbose,module:,directory:,key-size:,cert-dur:,sign-algo:"\
 			-n "$myName"\
 			-s "bash"\
 			-- "$@")
@@ -130,6 +134,12 @@ while true; do										# Arguments management:
 		;;
 		"-t" | "--test")							# Test module
 			toTest="true"
+			shift
+			continue
+		;;
+		"-v" | "--verbose")							# Output verbosity
+			osslVerbosity="-verbose"
+			muVerbosity="true"
 			shift
 			continue
 		;;
@@ -210,6 +220,8 @@ if [[ -z "${modName+x}" ]]; then					# If execution has gone this far,
 	exit $argErrorCode
 fi
 
+sudo mokutil --set-verbosity "$muVerbosity"
+
 
 function signMod() {								# Handles the signing itself.
 	set -e											# It stops as soon as an error pops;
@@ -224,7 +236,7 @@ function signMod() {								# Handles the signing itself.
 	openssl req -new -x509 -newkey rsa:"$keySize" -keyout "$modName.priv"\
 				-outform DER -out "$modName.der" -nodes -days "$certDur"\
 				-subj "/CN=$modName kernel module signing key/" -utf8\
-				-"$signAlgo"
+				-"$signAlgo" "$osslVerbosity"
 	echo '[*] Done.'								# generate a new key pair,
 	
 	echo '[*] Signing module ...'
