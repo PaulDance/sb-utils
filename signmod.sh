@@ -265,7 +265,8 @@ function signMod() {									# Handles the signing itself.
 	
 	if [[ "$osslEncrypt" = "true" ]]; then
 		echo "$logHeader""Encrypting private key..."
-		openssl pkcs8 -in "$modName.$privKeyExt" -topk8 -out "$modName.$privKeyExt"
+		openssl pkcs8 -in "./$modName.$privKeyExt" -topk8 -out "./$modName.$privKeyExt.tmp"
+		mv -f "./$modName.$privKeyExt.tmp" "./$modName.$privKeyExt"
 		echo "$logHeader""Done."
 	fi
 	
