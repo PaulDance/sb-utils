@@ -36,7 +36,7 @@ dirAdj="current"
 keySize="4096"
 certDur="1825"
 signAlgo="sha512"
-osslEncrypt=""
+osslEncrypt="true"
 osslVerbosity=""
 muVerbosity="false"
 
@@ -153,7 +153,7 @@ while true; do										# Arguments management:
 			continue
 		;;
 		"-n" | "--no-encrypt")
-			osslEncrypt="-nodes"
+			osslEncrypt="false"
 			shift
 			continue
 		;;
@@ -251,15 +251,21 @@ function signMod() {								# Handles the signing itself.
 	
 	echo "$logHeader""Generating new $modName signing keys..."
 	openssl req -new -x509 -newkey rsa:"$keySize" -keyout "$modName.priv"\
-				-outform DER -out "$modName.der" "$osslEncrypt" -days "$certDur"\
+				-outform DER -out "$modName.der" -nodes -days "$certDur"\
 				-subj "/CN=$modName kernel module signing key/" -utf8\
-				-"$signAlgo" "$osslVerbosity"
+				-"$signAlgo" $osslVerbosity
 	echo "$logHeader""Done."						# generate a new key pair,
 	
 	echo "$logHeader""Signing module..."
 	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$signAlgo"\
 		"./$modName.priv" "./$modName.der" "$(sudo modinfo -n $modName)"
 	echo "$logHeader""Done."						# sign the module with it
+	
+	if [[ "$osslEncrypt" = "true" ]]; then
+		echo "$logHeader""Encrypting private key..."
+		openssl pkcs8 -in "$modName.priv" -topk8 -out "$modName.priv"
+		echo "$logHeader""Done."
+	fi
 	
 	echo "$logHeader""Registering keys to the MOK manager..."
 	sudo mokutil --import "./$modName.der"			# and import it in the MOK manager.
