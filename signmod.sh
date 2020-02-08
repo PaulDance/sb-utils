@@ -28,6 +28,7 @@ binFileType="application/octet-stream; charset=binary"
 signAlgosList="sha1 sha224 sha256 sha384 sha512"
 minKeySize=512
 maxKeySize=4096
+logHeader="[*] "
 
 myName="$(basename $0)"								# Default parameters.
 baseDir="."
@@ -234,42 +235,42 @@ function signMod() {								# Handles the signing itself.
 	set -e											# It stops as soon as an error pops;
 	
 	if [[ -f "$modName.der" ]] && ! sudo mokutil -t "$modName.der"; then
-		echo "[*] Deleting $modName's previous signing key..."
+		echo "$logHeader""Deleting $modName's previous signing key..."
 		sudo mokutil --delete "$modName.der"		# if an older key is registered in
-		echo '[*] Done.'							# the MOK manager, delete it;
+		echo "$logHeader""Done."							# the MOK manager, delete it;
 	fi
 	
-	echo "[*] Generating new $modName signing keys..."
+	echo "$logHeader""Generating new $modName signing keys..."
 	openssl req -new -x509 -newkey rsa:"$keySize" -keyout "$modName.priv"\
 				-outform DER -out "$modName.der" -nodes -days "$certDur"\
 				-subj "/CN=$modName kernel module signing key/" -utf8\
 				-"$signAlgo" "$osslVerbosity"
-	echo '[*] Done.'								# generate a new key pair,
+	echo "$logHeader""Done."								# generate a new key pair,
 	
-	echo '[*] Signing module ...'
+	echo "$logHeader""Signing module ..."
 	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$signAlgo"\
 		"./$modName.priv" "./$modName.der" "$(sudo modinfo -n $modName)"
-	echo '[*] Done.'								# sign the module with it
+	echo "$logHeader""Done."								# sign the module with it
 	
-	echo '[*] Registering keys to the MOK manager...'
+	echo "$logHeader""Registering keys to the MOK manager..."
 	sudo mokutil --import "./$modName.der"			# and import it in the MOK manager.
-	echo -e '[*] Done.\n'
+	echo -e "$logHeader""Done.\n"
 	
-	echo '[*] You should now reboot the system and enroll the new MOK.'
+	echo "$logHeader""You should now reboot the system and enroll the new MOK."
 }
 
 function testMod() {								# Runs a few helper tests.
-	echo '[*] Starting tests...'
+	echo "$logHeader""Starting tests..."
 	modInfo="$(sudo modinfo $modName)"				# Trying if the module exists;
 	
 	if [[ "$?" -eq "0" ]]; then
-		echo -e "[*] The given module is:\n\n$modInfo\n"
+		echo -e "$logHeader""The given module is:\n\n$modInfo\n"
 	else
-		echo "[*] The given module doesn't seem to exist on the current system." >&2
+		echo "$logHeader""The given module doesn't seem to exist on the current system." >&2
 	fi
 	
 	if [[ -f "$modName.priv" ]]; then				# checking if a private key file exists
-		echo "[*] $modName.priv is a file in the $dirAdj directory."
+		echo "$logHeader""$modName.priv is a file in the $dirAdj directory."
 		local fileInfo="$(file -b -i $modName.priv)"
 		
 		if [[ "$fileInfo" = "$txtFileType" ]]; then	# and is a text file;
@@ -278,11 +279,11 @@ function testMod() {								# Runs a few helper tests.
 			echo -e "\tBut it doesn't seem to be a text file: '$fileInfo'." >&2
 		fi
 	else
-		echo "[*] $modName.priv is NOT a file in the $dirAdj directory."
+		echo "$logHeader""$modName.priv is NOT a file in the $dirAdj directory."
 	fi
 	
 	if [[ -f "$modName.der" ]]; then				# checking if a DER public key file exists,
-		echo "[*] $modName.der is a file in the $dirAdj directory."
+		echo "$logHeader""$modName.der is a file in the $dirAdj directory."
 		local fileInfo="$(file -b -i $modName.der)"
 		
 		if [[ "$fileInfo" = "$binFileType" ]]; then # is a binary data file
@@ -293,11 +294,11 @@ function testMod() {								# Runs a few helper tests.
 		
 		echo "$(sudo mokutil -t $modName.der)"		# and its state in the MOK manager.
 	else
-		echo "[*] $modName.der is NOT a file in the $dirAdj directory."
+		echo "$logHeader""$modName.der is NOT a file in the $dirAdj directory."
 	fi
 	
 	unset modInfo									# Cleaning variables.
-	echo "[*] Done."
+	echo "$logHeader""Done."
 }
 
 
