@@ -26,6 +26,8 @@ invalidSignAlgoErrorDoc="The given signature hash algorithm is not valid. Exitin
 txtFileType="text/plain; charset=us-ascii"
 binFileType="application/octet-stream; charset=binary"
 signAlgosList="sha1 sha224 sha256 sha384 sha512"
+minKeySize=512
+maxKeySize=4096
 
 myName="$(basename $0)"								# Default parameters.
 baseDir="."
@@ -61,14 +63,16 @@ Parameters:
 		If not provided, it defaults the current working directory, i.e.
 		where the script is called and not where it is stored.
 	-s | --key-size <keySize>: The RSA key size to use when generating a
-		new public-private key pair to sign the module with. This option
-		is not used when only testing. If not provided, it defaults to 4096.
+		new public-private key pair to sign the module with. Considering the
+		tools used, the provided value must be included between $minKeySize
+		and $maxKeySize. This option is not used when only testing. If not
+		provided, it defaults to $keySize.
 	-c | --cert-dur <certDur>: The duration in days the generated certificate
 		- i.e. the RSA key pair - should be valid for. If not provided, it
 		defaults to 5 * 365 = 1825 days.
 	-a | --sign-algo <signAlgo>: The hash algorithm that should be used to
 		sign the module with. Supported values are: sha1, sha224, sha256,
-		sha384 and sha512. If not provided, it defaults to sha512.
+		sha384 and sha512. If not provided, it defaults to $signAlgo.
 	-m | --module <kernelModuleName>: The kernel module's name, mandatory
 		when managing a kernel module.
 EOF
@@ -83,8 +87,8 @@ Description:
 		  directory and was used to register a key to the MOK manager. If
 		  it does, then it removes the previous signature from the MOK
 		  manager.
-		* Generate a new public-private (by default 4096b) RSA key pair
-		  and write it to <kernelModuleName>.der and <kernelModuleName>
+		* Generate a new public-private (by default $keySize bits) RSA key
+		  pair and write it to <kernelModuleName>.der and <kernelModuleName>
 		  .priv files.
 		* Sign the module's kernel object file.
 		* Enroll the new key to the MOK manager.
@@ -165,7 +169,9 @@ while true; do										# Arguments management:
 		"-s" | "--key-size")						# RSA key size
 			keySize="$2"
 			
-			if ! [[ "$keySize" =~ ^[0-9]{1,4}$ ]]; then
+			if ! [[ "$keySize" =~ ^[0-9]{1,4}$ ]]\
+					|| [[ $keySize -lt $minKeySize ]]\
+					|| [[ $keySize -gt $maxKeySize ]]; then
 				echo "$invalidKeySizeErrorDoc" >&2	# The key size should be a 1 to 4 digits
 				exit $argErrorCode					# integer (max 4096), otherwise throw error.
 			fi
@@ -176,7 +182,8 @@ while true; do										# Arguments management:
 		"-c" | "--cert-dur")						# Certificate duration
 			certDur="$2"
 			
-			if ! [[ "$certDur" =~ ^[0-9]+$ ]]; then
+			if ! [[ "$certDur" =~ ^[0-9]+$ ]]\
+					|| [[ $certDur -eq 0 ]]; then
 				echo "$invalidCertDurErrorDoc" >&2	# The duration should be at least one digit
 				exit $argErrorCode					# long, otherwise throw an error.
 			fi
