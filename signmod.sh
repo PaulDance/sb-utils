@@ -223,7 +223,8 @@ function signMod() {								# Handles the signing itself.
 	echo "[*] Generating new $modName signing keys..."
 	openssl req -new -x509 -newkey rsa:"$keySize" -keyout "$modName.priv"\
 				-outform DER -out "$modName.der" -nodes -days "$certDur"\
-				-subj "/CN=$modName kernel module signing key/"
+				-subj "/CN=$modName kernel module signing key/" -utf8\
+				-"$signAlgo"
 	echo '[*] Done.'								# generate a new key pair,
 	
 	echo '[*] Signing module ...'
