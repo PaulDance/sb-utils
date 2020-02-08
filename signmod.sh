@@ -36,6 +36,7 @@ dirAdj="current"
 keySize="4096"
 certDur="1825"
 signAlgo="sha512"
+osslEncrypt=""
 osslVerbosity=""
 muVerbosity="false"
 
@@ -44,6 +45,7 @@ read -r -d '' usageDoc << EOF
 Usage:  $myName  -h | --help
 	$myName [-t | --test]
 		   [-v | --verbose]
+		   [-n | --no-encrypt]
 		   [-d | --directory] <dirName>
 		   [-s | --key-size] <keySize>
 		   [-c | --cert-dur] <certDur>
@@ -59,6 +61,8 @@ Parameters:
 		<kernelModuleName>.der signature data file exists in the current
 		directory; the current state of the .der file in the MOK manager.
 	-v | --verbose: Activate further output verbosity.
+	-n | --no-encrypt: Do not encrypt the private key. Private key encryption
+		is the default, a password will be prompted in this case.
 	-d | --directory <dirName>: The directory where the script should cd into
 		in order to read and write files necessary for its functionalities.
 		If not provided, it defaults the current working directory, i.e.
@@ -113,8 +117,8 @@ if [[ "$#" -eq "0" ]]; then							# If there are no arguments given,
 fi
 
 # Arguments parsing, reports its own errors.
-argsTmp=$(getopt -o "h,t,v,m:,d:,s:,c:,a:"\
-			-l "help,test,verbose,module:,directory:,key-size:,cert-dur:,sign-algo:"\
+argsTmp=$(getopt -o "h,t,v,n,m:,d:,s:,c:,a:"\
+			-l "help,test,verbose,no-encrypt,module:,directory:,key-size:,cert-dur:,sign-algo:"\
 			-n "$myName"\
 			-s "bash"\
 			-- "$@")
@@ -145,6 +149,11 @@ while true; do										# Arguments management:
 		"-v" | "--verbose")							# Output verbosity
 			osslVerbosity="-verbose"
 			muVerbosity="true"
+			shift
+			continue
+		;;
+		"-n" | "--no-encrypt")
+			osslEncrypt="-nodes"
 			shift
 			continue
 		;;
@@ -242,7 +251,7 @@ function signMod() {								# Handles the signing itself.
 	
 	echo "$logHeader""Generating new $modName signing keys..."
 	openssl req -new -x509 -newkey rsa:"$keySize" -keyout "$modName.priv"\
-				-outform DER -out "$modName.der" -nodes -days "$certDur"\
+				-outform DER -out "$modName.der" "$osslEncrypt" -days "$certDur"\
 				-subj "/CN=$modName kernel module signing key/" -utf8\
 				-"$signAlgo" "$osslVerbosity"
 	echo "$logHeader""Done."								# generate a new key pair,
