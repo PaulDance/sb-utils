@@ -117,8 +117,8 @@ if [[ "$#" -eq "0" ]]; then							# If there are no arguments given,
 fi
 
 # Arguments parsing, reports its own errors.
-argsTmp=$(getopt -o "h,t,v,n,m:,d:,s:,c:,a:"\
-			-l "help,test,verbose,no-encrypt,module:,directory:,key-size:,cert-dur:,sign-algo:"\
+argsTmp=$(getopt -o "h,t,v,n,d:,s:,c:,a:,m:"\
+			-l "help,test,verbose,no-encrypt,directory:,key-size:,cert-dur:,sign-algo:,module:"\
 			-n "$myName"\
 			-s "bash"\
 			-- "$@")
@@ -155,11 +155,6 @@ while true; do										# Arguments management:
 		"-n" | "--no-encrypt")
 			osslEncrypt="-nodes"
 			shift
-			continue
-		;;
-		"-m" | "--module")							# Module name
-			modName="$2"
-			shift 2
 			continue
 		;;
 		"-d" | "--directory")						# Working directory
@@ -209,6 +204,11 @@ while true; do										# Arguments management:
 				exit $argErrorCode					# algorithms is expected, else error.
 			fi
 			
+			shift 2
+			continue
+		;;
+		"-m" | "--module")							# Module name
+			modName="$2"
 			shift 2
 			continue
 		;;
