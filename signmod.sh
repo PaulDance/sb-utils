@@ -15,7 +15,7 @@ export PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-argErrorCode=1										# Constants.
+argErrorCode=1											# Constants.
 intErrorCode=2
 intErrorDoc="Internal error. Exiting now."
 missModNameErrorDoc="Missing kernel module's name. Exiting now."
@@ -29,8 +29,10 @@ signAlgosList="sha1 sha224 sha256 sha384 sha512"
 minKeySize=512
 maxKeySize=4096
 logHeader="[*] "
+pubKeyExt="pub.der"
+privKeyExt="priv.pem"
 
-myName="$(basename $0)"								# Default parameters.
+myName="$(basename $0)"									# Default parameters.
 baseDir="."
 dirAdj="current"
 keySize="4096"
@@ -58,8 +60,8 @@ Parameters:
 	-h | --help: Prints the help message and stops.
 	-t | --test: Optionally, tests a few things: if the given kernel module
 		name references	an existing module on the current system; if a
-		<kernelModuleName>.der signature data file exists in the current
-		directory; the current state of the .der file in the MOK manager.
+		<kernelModuleName>.$pubKeyExt signature data file exists in the current
+		directory; the current state of the .$pubKeyExt file in the MOK manager.
 	-v | --verbose: Activate further output verbosity.
 	-n | --no-encrypt: Do not encrypt the private key. Private key encryption
 		is the default, a password will be prompted in this case.
@@ -88,13 +90,13 @@ Description:
 	SecureBoot is enabled. Provide the kernel module's name and the script
 	will, in order:
 		* Check if the module was previously signed by testing if a file
-		  <kernelModuleName>.der exists or not in the current or given
+		  <kernelModuleName>.$pubKeyExt exists or not in the current or given
 		  directory and was used to register a key to the MOK manager. If
 		  it does, then it removes the previous signature from the MOK
 		  manager.
 		* Generate a new public-private (by default $keySize bits) RSA key
-		  pair and write it to <kernelModuleName>.der and <kernelModuleName>
-		  .priv files.
+		  pair and write it to <kernelModuleName>.$pubKeyExt and <kernelModuleName>
+		  .$privKeyExt files.
 		* Sign the module's kernel object file.
 		* Enroll the new key to the MOK manager.
 	
@@ -111,8 +113,8 @@ $descDoc
 EOF
 
 
-if [[ "$#" -eq "0" ]]; then							# If there are no arguments given,
-	echo "$usageDoc" >&2							# give the usage documentation.
+if [[ "$#" -eq "0" ]]; then								# If there are no arguments given,
+	echo "$usageDoc" >&2								# give the usage documentation.
 	exit $argErrorCode
 fi
 
@@ -123,30 +125,30 @@ argsTmp=$(getopt -o "h,t,v,n,d:,s:,c:,a:,m:"\
 			-s "bash"\
 			-- "$@")
 
-if [[ "$?" -ne "0" ]]; then							# In case the parsing threw an error,
-	echo -e "\n$usageDoc" >&2						# just report the usage because it is
-	exit $argErrorCode								# often due to misuse of arguments.
+if [[ "$?" -ne "0" ]]; then								# In case the parsing threw an error,
+	echo -e "\n$usageDoc" >&2							# just report the usage because it is
+	exit $argErrorCode									# often due to misuse of arguments.
 fi
 
-eval set -- "$argsTmp"								# Making the parsed arguments mine.
-unset argsTmp										# Freeing the temporary variable.
+eval set -- "$argsTmp"									# Making the parsed arguments mine.
+unset argsTmp											# Freeing the temporary variable.
 
-function contains() {								# Tests if $2 is in list $1.
+function contains() {									# Tests if $2 is in list $1.
     [[ "$1" =~ (^| )$2($| ) ]] && return 0 || return 1
 }
 
-while true; do										# Arguments management:
+while true; do											# Arguments management:
 	case "$1" in
-		"-h" | "--help")							# Help
+		"-h" | "--help")								# Help
 			echo "$helpDoc"
 			exit 0
 		;;
-		"-t" | "--test")							# Test module
+		"-t" | "--test")								# Test module
 			toTest="true"
 			shift
 			continue
 		;;
-		"-v" | "--verbose")							# Output verbosity
+		"-v" | "--verbose")								# Output verbosity
 			osslVerbosity="-verbose"
 			muVerbosity="true"
 			shift
@@ -157,126 +159,126 @@ while true; do										# Arguments management:
 			shift
 			continue
 		;;
-		"-d" | "--directory")						# Working directory
+		"-d" | "--directory")							# Working directory
 			baseDir="$2"
 			dirAdj="given"
 			
-			if [[ -d "$baseDir" ]]; then			# Check if the given directory exists:
-				cd "$baseDir"						# if so, then go in it,
+			if [[ -d "$baseDir" ]]; then				# Check if the given directory exists:
+				cd "$baseDir"							# if so, then go in it,
 			else
 				echo "$baseDir $wrongDirErrorDoc" >&2
-				exit $argErrorCode					# otherwise report an error.
+				exit $argErrorCode						# otherwise report an error.
 			fi
 			
 			shift 2
 			continue
 		;;
-		"-s" | "--key-size")						# RSA key size
+		"-s" | "--key-size")							# RSA key size
 			keySize="$2"
 			
 			if ! [[ "$keySize" =~ ^[0-9]{1,4}$ ]]\
 					|| [[ $keySize -lt $minKeySize ]]\
 					|| [[ $keySize -gt $maxKeySize ]]; then
-				echo "$invalidKeySizeErrorDoc" >&2	# The key size should be a 1 to 4 digits
-				exit $argErrorCode					# integer (max 4096), otherwise throw error.
+				echo "$invalidKeySizeErrorDoc" >&2		# The key size should be a 1 to 4 digits
+				exit $argErrorCode						# integer (max 4096), otherwise throw error.
 			fi
 			
 			shift 2
 			continue
 		;;
-		"-c" | "--cert-dur")						# Certificate duration
+		"-c" | "--cert-dur")							# Certificate duration
 			certDur="$2"
 			
 			if ! [[ "$certDur" =~ ^[0-9]+$ ]]\
 					|| [[ $certDur -eq 0 ]]; then
-				echo "$invalidCertDurErrorDoc" >&2	# The duration should be at least one digit
-				exit $argErrorCode					# long, otherwise throw an error.
+				echo "$invalidCertDurErrorDoc" >&2		# The duration should be at least one digit
+				exit $argErrorCode						# long, otherwise throw an error.
 			fi
 			
 			shift 2
 			continue
 		;;
-		"-a" | "--sign-algo")						# Signature hash algorithm
+		"-a" | "--sign-algo")							# Signature hash algorithm
 			signAlgo="$2"
 			
 			if ! contains "$signAlgosList" "$signAlgo"; then
-				echo "$invalidSignAlgoErrorDoc" >&2	# Only a value from a precise list of
-				exit $argErrorCode					# algorithms is expected, else error.
+				echo "$invalidSignAlgoErrorDoc" >&2		# Only a value from a precise list of
+				exit $argErrorCode						# algorithms is expected, else error.
 			fi
 			
 			shift 2
 			continue
 		;;
-		"-m" | "--module")							# Module name
+		"-m" | "--module")								# Module name
 			modName="$2"
 			shift 2
 			continue
 		;;
-		"--")										# This case is used by getopt to inform
-			shift									# us that no more option arguments are
-			break									# to be expected, so we can stop here,
+		"--")											# This case is used by getopt to inform
+			shift										# us that no more option arguments are
+			break										# to be expected, so we can stop here,
 		;;
-		*)											# but if "--" wasn't encountered after
-			echo "$intErrorDoc" >&2					# checking for all the options, then it
-			exit $intErrorCode						# means there is a programming mistake.
+		*)												# but if "--" wasn't encountered after
+			echo "$intErrorDoc" >&2						# checking for all the options, then it
+			exit $intErrorCode							# means there is a programming mistake.
 		;;
 	esac
 done
 
-for otherArg; do									# When more arguments are given,
-	echo "Unknown argument: '$otherArg'" >&2		# give an error for each of them
+for otherArg; do										# When more arguments are given,
+	echo "Unknown argument: '$otherArg'" >&2			# give an error for each of them
 	unknArgDet="true"
 done
 if [[ "$unknArgDet" = "true" ]]; then
-	echo -e "\n$usageDoc" >&2						# and give the usage, as no further
-	exit $argErrorCode								# arguments are expected.
+	echo -e "\n$usageDoc" >&2							# and give the usage, as no further
+	exit $argErrorCode									# arguments are expected.
 fi
 
-if [[ -z "${modName+x}" ]]; then					# If execution has gone this far,
-	echo "$missModNameErrorDoc" >&2					# the module name is mandatory.
+if [[ -z "${modName+x}" ]]; then						# If execution has gone this far,
+	echo "$missModNameErrorDoc" >&2						# the module name is mandatory.
 	exit $argErrorCode
 fi
 
 sudo mokutil --set-verbosity "$muVerbosity"
 
 
-function signMod() {								# Handles the signing itself.
-	set -e											# It stops as soon as an error pops;
+function signMod() {									# Handles the signing itself.
+	set -e												# It stops as soon as an error pops;
 	
-	if [[ -f "$modName.der" ]] && ! sudo mokutil -t "$modName.der"; then
+	if [[ -f "$modName.$pubKeyExt" ]] && ! sudo mokutil -t "$modName.$pubKeyExt"; then
 		echo "$logHeader""Deleting $modName's previous signing key..."
-		sudo mokutil --delete "$modName.der"		# if an older key is registered in
-		echo "$logHeader""Done."					# the MOK manager, delete it;
+		sudo mokutil --delete "$modName.$pubKeyExt"		# if an older key is registered in
+		echo "$logHeader""Done."						# the MOK manager, delete it;
 	fi
 	
 	echo "$logHeader""Generating new $modName signing keys..."
-	openssl req -new -x509 -newkey rsa:"$keySize" -keyout "$modName.priv"\
-				-outform DER -out "$modName.der" -nodes -days "$certDur"\
+	openssl req -new -x509 -newkey rsa:"$keySize" -keyout "$modName.$privKeyExt"\
+				-outform DER -out "$modName.$pubKeyExt" -nodes -days "$certDur"\
 				-subj "/CN=$modName kernel module signing key/" -utf8\
 				-"$signAlgo" $osslVerbosity
-	echo "$logHeader""Done."						# generate a new key pair,
+	echo "$logHeader""Done."							# generate a new key pair,
 	
 	echo "$logHeader""Signing module..."
 	sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$signAlgo"\
-		"./$modName.priv" "./$modName.der" "$(sudo modinfo -n $modName)"
-	echo "$logHeader""Done."						# sign the module with it
+		"./$modName.$privKeyExt" "./$modName.$pubKeyExt" "$(sudo modinfo -n $modName)"
+	echo "$logHeader""Done."							# sign the module with it
 	
 	if [[ "$osslEncrypt" = "true" ]]; then
 		echo "$logHeader""Encrypting private key..."
-		openssl pkcs8 -in "$modName.priv" -topk8 -out "$modName.priv"
+		openssl pkcs8 -in "$modName.$privKeyExt" -topk8 -out "$modName.$privKeyExt"
 		echo "$logHeader""Done."
 	fi
 	
 	echo "$logHeader""Registering keys to the MOK manager..."
-	sudo mokutil --import "./$modName.der"			# and import it in the MOK manager.
+	sudo mokutil --import "./$modName.$pubKeyExt"		# and import it in the MOK manager.
 	echo -e "$logHeader""Done.\n"
 	
 	echo "$logHeader""You should now reboot the system and enroll the new MOK."
 }
 
-function testMod() {								# Runs a few helper tests.
+function testMod() {									# Runs a few helper tests.
 	echo "$logHeader""Starting tests..."
-	modInfo="$(sudo modinfo $modName)"				# Trying if the module exists;
+	modInfo="$(sudo modinfo $modName)"					# Trying if the module exists;
 	
 	if [[ "$?" -eq "0" ]]; then
 		echo -e "$logHeader""The given module is:\n\n$modInfo\n"
@@ -284,40 +286,40 @@ function testMod() {								# Runs a few helper tests.
 		echo "$logHeader""The given module doesn't seem to exist on the current system." >&2
 	fi
 	
-	if [[ -f "$modName.priv" ]]; then				# checking if a private key file exists
-		echo "$logHeader""$modName.priv is a file in the $dirAdj directory."
-		local fileInfo="$(file -b -i $modName.priv)"
+	if [[ -f "$modName.$privKeyExt" ]]; then			# checking if a private key file exists
+		echo "$logHeader""$modName.$privKeyExt is a file in the $dirAdj directory."
+		local fileInfo="$(file -b -i $modName.$privKeyExt)"
 		
-		if [[ "$fileInfo" = "$txtFileType" ]]; then	# and is a text file;
+		if [[ "$fileInfo" = "$txtFileType" ]]; then		# and is a text file;
 			echo -e "\tIt seems to be a text file."
 		else
 			echo -e "\tBut it doesn't seem to be a text file: '$fileInfo'." >&2
 		fi
 	else
-		echo "$logHeader""$modName.priv is NOT a file in the $dirAdj directory."
+		echo "$logHeader""$modName.$privKeyExt is NOT a file in the $dirAdj directory."
 	fi
 	
-	if [[ -f "$modName.der" ]]; then				# checking if a DER public key file exists,
-		echo "$logHeader""$modName.der is a file in the $dirAdj directory."
-		local fileInfo="$(file -b -i $modName.der)"
+	if [[ -f "$modName.$pubKeyExt" ]]; then				# checking if a DER public key file exists,
+		echo "$logHeader""$modName.$pubKeyExt is a file in the $dirAdj directory."
+		local fileInfo="$(file -b -i $modName.$pubKeyExt)"
 		
-		if [[ "$fileInfo" = "$binFileType" ]]; then # is a binary data file
+		if [[ "$fileInfo" = "$binFileType" ]]; then 	# is a binary data file
 			echo -e "\tIt seems to be a binary data file."
 		else
 			echo -e "\tBut it doesn't seem to be a binary data file: '$fileInfo'." >&2
 		fi
 		
-		echo "$(sudo mokutil -t $modName.der)"		# and its state in the MOK manager.
+		echo "$(sudo mokutil -t $modName.$pubKeyExt)"	# and its state in the MOK manager.
 	else
-		echo "$logHeader""$modName.der is NOT a file in the $dirAdj directory."
+		echo "$logHeader""$modName.$pubKeyExt is NOT a file in the $dirAdj directory."
 	fi
 	
-	unset modInfo									# Cleaning variables.
+	unset modInfo										# Cleaning variables.
 	echo "$logHeader""Done."
 }
 
 
-if [[ "$toTest" = "true" ]]; then					# Choosing between test and signing.
+if [[ "$toTest" = "true" ]]; then						# Choosing between test and signing.
 	testMod
 else
 	signMod
