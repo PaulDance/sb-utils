@@ -47,14 +47,14 @@ mok_verbosity="false"
 # Documentation strings.
 read -r -d '' USAGE_DOC << EOF
 Usage:  $MY_NAME  -h | --help
-    $MY_NAME [-t | --test]
-            [-v | --verbose]
-            [-n | --no-encrypt]
-            [-d | --directory] <dir_name>
-            [-s | --key-size] <key_size>
-            [-c | --cert-dur] <cert_dur>
-            [-a | --sign-algo] <sign_algo>
-             -m | --module <module_name>
+    [-t | --test]
+    [-v | --verbose]
+    [-n | --no-encrypt]
+    [-d | --directory] <dir_name>
+    [-s | --key-size] <key_size>
+    [-c | --cert-dur] <cert_dur>
+    [-a | --sign-algo] <sign_algo>
+     -m | --module <module_name>
 EOF
 
 read -r -d '' PARAMS_DOC << EOF
