@@ -299,7 +299,7 @@ function sign_mod() {
 # Runs a few helper tests.
 function test_mod() {
     echo "$LOG_HEADER""Starting tests..."
-    mod_info="$(sudo modinfo $mod_name)"
+    local mod_info="$(sudo modinfo $mod_name)"
 
     # Determine if the module exists.
     if [[ "$?" -eq "0" ]]; then
@@ -339,7 +339,6 @@ function test_mod() {
         echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is NOT a file in the $dir_adj directory."
     fi
 
-    unset mod_info
     echo "$LOG_HEADER""Done."
 }
 
