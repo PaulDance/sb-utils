@@ -280,7 +280,7 @@ function sign_mod() {
     echo "$LOG_HEADER""Signing module..."
     sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$sign_algo"\
         "./$mod_name.$PRIV_KEY_EXT" "./$mod_name.$PUB_KEY_EXT"\
-        "$(sudo modinfo --filename $mod_name)"
+        "$(modinfo --filename $mod_name)"
     echo "$LOG_HEADER""Done."
 
     # Encrpyt the private key if requested.
@@ -303,7 +303,7 @@ function sign_mod() {
 # Runs a few helper tests.
 function test_mod() {
     echo "$LOG_HEADER""Starting tests..."
-    local mod_info="$(sudo modinfo $mod_name)"
+    local mod_info="$(modinfo $mod_name)"
 
     # Determine if the module exists.
     if [[ "$?" -eq "0" ]]; then
