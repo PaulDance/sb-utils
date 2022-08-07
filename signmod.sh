@@ -258,6 +258,7 @@ sudo mokutil --set-verbosity "$mok_verbosity"
 # Handles the signing itself.
 function sign_mod() {
     set -e
+    mkdir --parents "$base_dir"
 
     # Delete an older key if it exists.
     if [[ -f "$mod_name.$PUB_KEY_EXT" ]]\
