@@ -30,6 +30,7 @@ SIGN_ALGOS_LIST="sha1 sha224 sha256 sha384 sha512"
 MIN_KEY_SIZE=512
 MAX_KEY_SIZE=4096
 LOG_HEADER="[*] "
+KEY_STEM="cert"
 PUB_KEY_EXT="pub.der"
 PRIV_KEY_EXT="priv.pem"
 MY_NAME="$(basename $0)"
@@ -297,6 +298,19 @@ function sign_mod() {
     echo -e "$LOG_HEADER""Done.\n"
 
     echo "$LOG_HEADER""You should now reboot the system and enroll the new MOK."
+}
+
+function test_cert() {
+    if [[ "$1" = "true" ]]; then
+        set -e
+    fi
+
+    # Check if a private key file exists and is correct.
+    openssl rsa -in "$base_dir/$KEY_STEM.$PRIV_KEY_EXT" -noout
+    # Check if a public key file exists and is correct.
+    openssl x509 -in "$base_dir/$KEY_STEM.$PUB_KEY_EXT" -noout
+    # Check its state according to the MOK manager.
+    sudo mokutil --test-key "$base_dir/$KEY_STEM.$PUB_KEY_EXT"
 }
 
 # Runs a few helper tests.
