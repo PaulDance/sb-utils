@@ -260,7 +260,8 @@ function sign_mod() {
     set -e
 
     # Delete an older key if it exists.
-    if [[ -f "$mod_name.$PUB_KEY_EXT" ]] && ! sudo mokutil -t "$mod_name.$PUB_KEY_EXT"
+    if [[ -f "$mod_name.$PUB_KEY_EXT" ]]\
+        && ! sudo mokutil --test-key "$mod_name.$PUB_KEY_EXT"
     then
         echo "$LOG_HEADER""Deleting $mod_name's previous signing key..."
         sudo mokutil --delete "$mod_name.$PUB_KEY_EXT"
@@ -279,7 +280,7 @@ function sign_mod() {
     echo "$LOG_HEADER""Signing module..."
     sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$sign_algo"\
         "./$mod_name.$PRIV_KEY_EXT" "./$mod_name.$PUB_KEY_EXT"\
-        "$(sudo modinfo -n $mod_name)"
+        "$(sudo modinfo --filename $mod_name)"
     echo "$LOG_HEADER""Done."
 
     # Encrpyt the private key if requested.
@@ -314,7 +315,7 @@ function test_mod() {
     # Check if a private key file exists and is a text file.
     if [[ -f "$mod_name.$PRIV_KEY_EXT" ]]; then
         echo "$LOG_HEADER""$mod_name.$PRIV_KEY_EXT is a file in the $dir_adj directory."
-        local file_info="$(file -b -i $mod_name.$PRIV_KEY_EXT)"
+        local file_info="$(file --brief --mime $mod_name.$PRIV_KEY_EXT)"
 
         if [[ "$file_info" = "$TXT_MIME_TYPE" ]]; then
             echo -e "\tIt seems to be a text file."
@@ -329,7 +330,7 @@ function test_mod() {
     # state according to the MOK manager.
     if [[ -f "$mod_name.$PUB_KEY_EXT" ]]; then
         echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is a file in the $dir_adj directory."
-        local file_info="$(file -b -i $mod_name.$PUB_KEY_EXT)"
+        local file_info="$(file --brief --mime $mod_name.$PUB_KEY_EXT)"
 
         if [[ "$file_info" = "$BIN_MIME_TYPE" ]]; then
             echo -e "\tIt seems to be a binary data file."
@@ -337,7 +338,7 @@ function test_mod() {
             echo -e "\tBut it doesn't seem to be a binary data file: '$file_info'." >&2
         fi
 
-        echo "$(sudo mokutil -t $mod_name.$PUB_KEY_EXT)"
+        echo "$(sudo mokutil --test-key $mod_name.$PUB_KEY_EXT)"
     else
         echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is NOT a file in the $dir_adj directory."
     fi
