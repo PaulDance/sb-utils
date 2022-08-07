@@ -260,7 +260,8 @@ function sign_mod() {
     set -e
 
     # Delete an older key if it exists.
-    if [[ -f "$mod_name.$PUB_KEY_EXT" ]] && ! sudo mokutil -t "$mod_name.$PUB_KEY_EXT"; then
+    if [[ -f "$mod_name.$PUB_KEY_EXT" ]] && ! sudo mokutil -t "$mod_name.$PUB_KEY_EXT"
+    then
         echo "$LOG_HEADER""Deleting $mod_name's previous signing key..."
         sudo mokutil --delete "$mod_name.$PUB_KEY_EXT"
         echo "$LOG_HEADER""Done."
@@ -277,13 +278,15 @@ function sign_mod() {
     # Sign the module with it.
     echo "$LOG_HEADER""Signing module..."
     sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$sign_algo"\
-        "./$mod_name.$PRIV_KEY_EXT" "./$mod_name.$PUB_KEY_EXT" "$(sudo modinfo -n $mod_name)"
+        "./$mod_name.$PRIV_KEY_EXT" "./$mod_name.$PUB_KEY_EXT"\
+        "$(sudo modinfo -n $mod_name)"
     echo "$LOG_HEADER""Done."
 
     # Encrpyt the private key if requested.
     if [[ "$ossl_encrypt" = "true" ]]; then
         echo "$LOG_HEADER""Encrypting private key..."
-        openssl pkcs8 -in "./$mod_name.$PRIV_KEY_EXT" -topk8 -out "./$mod_name.$PRIV_KEY_EXT.tmp"
+        openssl pkcs8 -in "./$mod_name.$PRIV_KEY_EXT" -topk8\
+            -out "./$mod_name.$PRIV_KEY_EXT.tmp"
         mv -f "./$mod_name.$PRIV_KEY_EXT.tmp" "./$mod_name.$PRIV_KEY_EXT"
         echo "$LOG_HEADER""Done."
     fi
