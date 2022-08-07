@@ -338,7 +338,8 @@ function test_mod() {
             echo -e "\tBut it doesn't seem to be a binary data file: '$file_info'." >&2
         fi
 
-        echo "$(sudo mokutil --test-key $mod_name.$PUB_KEY_EXT)"
+        # Has its own output.
+        sudo mokutil --test-key "$mod_name.$PUB_KEY_EXT"
     else
         echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is NOT a file in the $dir_adj directory."
     fi
