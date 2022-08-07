@@ -35,8 +35,8 @@ PRIV_KEY_EXT="priv.pem"
 MY_NAME="$(basename $0)"
 
 # Default parameters.
-base_dir="."
-dir_adj="current"
+base_dir="$HOME/.mok"
+dir_adj="default"
 key_size="4096"
 cert_dur="1825"
 sign_algo="sha512"
