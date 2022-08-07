@@ -169,9 +169,7 @@ while true; do
             dir_adj="given"
 
             # Report an error if the given directory is missing.
-            if [[ -d "$base_dir" ]]; then
-                cd "$base_dir"
-            else
+            if ! [[ -d "$base_dir" ]]; then
                 echo "$base_dir $WRONG_DIR_ERROR_DOC" >&2
                 exit $ARG_ERROR_CODE
             fi
@@ -261,18 +259,18 @@ function sign_mod() {
     mkdir --parents "$base_dir"
 
     # Delete an older key if it exists.
-    if [[ -f "$mod_name.$PUB_KEY_EXT" ]]\
-        && ! sudo mokutil --test-key "$mod_name.$PUB_KEY_EXT"
+    if [[ -f "$base_dir/$mod_name.$PUB_KEY_EXT" ]]\
+        && ! sudo mokutil --test-key "$base_dir/$mod_name.$PUB_KEY_EXT"
     then
         echo "$LOG_HEADER""Deleting $mod_name's previous signing key..."
-        sudo mokutil --delete "$mod_name.$PUB_KEY_EXT"
+        sudo mokutil --delete "$base_dir/$mod_name.$PUB_KEY_EXT"
         echo "$LOG_HEADER""Done."
     fi
 
     # Generate a new key pair.
     echo "$LOG_HEADER""Generating new $mod_name signing keys..."
-    openssl req -new -x509 -newkey rsa:"$key_size" -keyout "$mod_name.$PRIV_KEY_EXT"\
-                -outform DER -out "$mod_name.$PUB_KEY_EXT" -nodes -days "$cert_dur"\
+    openssl req -new -x509 -newkey rsa:"$key_size" -keyout "$base_dir/$mod_name.$PRIV_KEY_EXT"\
+                -outform DER -out "$base_dir/$mod_name.$PUB_KEY_EXT" -nodes -days "$cert_dur"\
                 -subj "/CN=$mod_name kernel module signing key/" -utf8\
                 -"$sign_algo" $ossl_verbosity
     echo "$LOG_HEADER""Done."
@@ -280,22 +278,22 @@ function sign_mod() {
     # Sign the module with it.
     echo "$LOG_HEADER""Signing module..."
     sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$sign_algo"\
-        "./$mod_name.$PRIV_KEY_EXT" "./$mod_name.$PUB_KEY_EXT"\
+        "$base_dir/$mod_name.$PRIV_KEY_EXT" "$base_dir/$mod_name.$PUB_KEY_EXT"\
         "$(modinfo --filename $mod_name)"
     echo "$LOG_HEADER""Done."
 
     # Encrpyt the private key if requested.
     if [[ "$ossl_encrypt" = "true" ]]; then
         echo "$LOG_HEADER""Encrypting private key..."
-        openssl pkcs8 -in "./$mod_name.$PRIV_KEY_EXT" -topk8\
-            -out "./$mod_name.$PRIV_KEY_EXT.tmp"
-        mv -f "./$mod_name.$PRIV_KEY_EXT.tmp" "./$mod_name.$PRIV_KEY_EXT"
+        openssl pkcs8 -in "$base_dir/$mod_name.$PRIV_KEY_EXT" -topk8\
+            -out "$base_dir/$mod_name.$PRIV_KEY_EXT.tmp"
+        mv -f "$base_dir/$mod_name.$PRIV_KEY_EXT.tmp" "$base_dir/$mod_name.$PRIV_KEY_EXT"
         echo "$LOG_HEADER""Done."
     fi
 
     # Register the certificate in the MOK keyring.
     echo "$LOG_HEADER""Registering keys to the MOK manager..."
-    sudo mokutil --import "./$mod_name.$PUB_KEY_EXT"
+    sudo mokutil --import "$base_dir/$mod_name.$PUB_KEY_EXT"
     echo -e "$LOG_HEADER""Done.\n"
 
     echo "$LOG_HEADER""You should now reboot the system and enroll the new MOK."
@@ -314,9 +312,9 @@ function test_mod() {
     fi
 
     # Check if a private key file exists and is a text file.
-    if [[ -f "$mod_name.$PRIV_KEY_EXT" ]]; then
+    if [[ -f "$base_dir/$mod_name.$PRIV_KEY_EXT" ]]; then
         echo "$LOG_HEADER""$mod_name.$PRIV_KEY_EXT is a file in the $dir_adj directory."
-        local file_info="$(file --brief --mime $mod_name.$PRIV_KEY_EXT)"
+        local file_info=$(file --brief --mime "$base_dir/$mod_name.$PRIV_KEY_EXT")
 
         if [[ "$file_info" = "$TXT_MIME_TYPE" ]]; then
             echo -e "\tIt seems to be a text file."
@@ -329,9 +327,9 @@ function test_mod() {
 
     # Check if a public key exists as a "binary" file (DER) and display its
     # state according to the MOK manager.
-    if [[ -f "$mod_name.$PUB_KEY_EXT" ]]; then
+    if [[ -f "$base_dir/$mod_name.$PUB_KEY_EXT" ]]; then
         echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is a file in the $dir_adj directory."
-        local file_info="$(file --brief --mime $mod_name.$PUB_KEY_EXT)"
+        local file_info=$(file --brief --mime "$base_dir/$mod_name.$PUB_KEY_EXT")
 
         if [[ "$file_info" = "$BIN_MIME_TYPE" ]]; then
             echo -e "\tIt seems to be a binary data file."
@@ -340,7 +338,7 @@ function test_mod() {
         fi
 
         # Has its own output.
-        sudo mokutil --test-key "$mod_name.$PUB_KEY_EXT"
+        sudo mokutil --test-key "$base_dir/$mod_name.$PUB_KEY_EXT"
     else
         echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is NOT a file in the $dir_adj directory."
     fi
