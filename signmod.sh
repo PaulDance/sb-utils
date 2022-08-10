@@ -300,17 +300,50 @@ function sign_mod() {
     echo "$LOG_HEADER""You should now reboot the system and enroll the new MOK."
 }
 
+# Tests the presence of a valid X.509 certificate at the default location and
+# checks its state according to the MOK manager.
+#
+# $1: "true" | "false": whether the function should failfast or run all tests
+#   and log things.
 function test_cert() {
-    if [[ "$1" = "true" ]]; then
-        set -e
+    # Check if a private key file exists and is correct.
+    if openssl rsa -in "$base_dir/$KEY_STEM.$PRIV_KEY_EXT" -noout; then
+        if [[ "$1" = "false" ]]; then
+            echo "$LOG_HEADER$KEY_STEM.$PRIV_KEY_EXT in the base directory is"\
+                "a valid RSA private key file."
+        fi
+    elif [[ "$1" = "true" ]]; then
+        return 1
+    else
+        echo "$LOG_HEADER$KEY_STEM.$PRIV_KEY_EXT in the base directory does"\
+            "not seem to be a valid RSA private key file."
     fi
 
-    # Check if a private key file exists and is correct.
-    openssl rsa -in "$base_dir/$KEY_STEM.$PRIV_KEY_EXT" -noout
     # Check if a public key file exists and is correct.
-    openssl x509 -in "$base_dir/$KEY_STEM.$PUB_KEY_EXT" -noout
+    if openssl x509 -in "$base_dir/$KEY_STEM.$PUB_KEY_EXT" -noout; then
+        if [[ "$1" = "false" ]]; then
+            echo "$LOG_HEADER""$KEY_STEM.$PUB_KEY_EXT in the base directory is"\
+                "a valid X.509 certificate (public key) file."
+        fi
+    elif [[ "$1" = "true" ]]; then
+        return 1
+    else
+        echo "$LOG_HEADER""$KEY_STEM.$PUB_KEY_EXT in the base directory does"\
+            "not seem to be a valid X.509 certificate (public key) file."
+    fi
+
     # Check its state according to the MOK manager.
-    sudo mokutil --test-key "$base_dir/$KEY_STEM.$PUB_KEY_EXT"
+    if sudo mokutil --test-key "$base_dir/$KEY_STEM.$PUB_KEY_EXT"; then
+        if [[ "$1" = "false" ]]; then
+            echo "$LOG_HEADER""$KEY_STEM.$PUB_KEY_EXT in the base directory is"\
+                "known by the MOK manager."
+        fi
+    elif [[ "$1" = "true" ]]; then
+        return 1
+    else
+        echo "$LOG_HEADER""$KEY_STEM.$PUB_KEY_EXT in the base directory does"\
+            "not seem to be known by the MOK manager."
+    fi
 }
 
 # Runs a few helper tests.
