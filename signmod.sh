@@ -337,7 +337,6 @@ function test_cert() {
 
 # Runs a few helper tests.
 function test_mod() {
-    echo "$LOG_HEADER""Starting tests..."
     local mod_info="$(modinfo $mod_name)"
 
     # Determine if the module exists.
@@ -378,15 +377,15 @@ function test_mod() {
     else
         echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is NOT a file in the $dir_adj directory."
     fi
-
-    echo "$LOG_HEADER""Done."
 }
 
 
 # Main operation.
 if [[ "$to_test" = "true" ]]; then
+    echo "$LOG_HEADER""Starting tests..."
     test_cert false
     test_mod
+    echo "$LOG_HEADER""Done."
 else
     if ! test_cert true; then
         mkdir --parents "$base_dir"
