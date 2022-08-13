@@ -338,44 +338,19 @@ function test_cert() {
 # Runs a few helper tests.
 function test_mod() {
     local mod_info="$(modinfo $mod_name)"
+    local mod_sign="$(modinfo --field signature $mod_name)"
 
     # Determine if the module exists.
     if [[ "$?" -eq "0" ]]; then
         echo -e "$LOG_HEADER""The given module is:\n\n$mod_info\n"
     else
-        echo "$LOG_HEADER""The given module doesn't seem to exist on the current system." >&2
+        echo "$LOG_HEADER""The given module does not seem to exist on the current system." >&2
     fi
 
-    # Check if a private key file exists and is a text file.
-    if [[ -f "$base_dir/$mod_name.$PRIV_KEY_EXT" ]]; then
-        echo "$LOG_HEADER""$mod_name.$PRIV_KEY_EXT is a file in the $dir_adj directory."
-        local file_info=$(file --brief --mime "$base_dir/$mod_name.$PRIV_KEY_EXT")
-
-        if [[ "$file_info" = "$TXT_MIME_TYPE" ]]; then
-            echo -e "\tIt seems to be a text file."
-        else
-            echo -e "\tBut it doesn't seem to be a text file: '$file_info'." >&2
-        fi
+    if [[ -z "$mod_sign" ]]; then
+        echo "$LOG_HEADER""The given module does not seem to be signed."
     else
-        echo "$LOG_HEADER""$mod_name.$PRIV_KEY_EXT is NOT a file in the $dir_adj directory."
-    fi
-
-    # Check if a public key exists as a "binary" file (DER) and display its
-    # state according to the MOK manager.
-    if [[ -f "$base_dir/$mod_name.$PUB_KEY_EXT" ]]; then
-        echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is a file in the $dir_adj directory."
-        local file_info=$(file --brief --mime "$base_dir/$mod_name.$PUB_KEY_EXT")
-
-        if [[ "$file_info" = "$BIN_MIME_TYPE" ]]; then
-            echo -e "\tIt seems to be a binary data file."
-        else
-            echo -e "\tBut it doesn't seem to be a binary data file: '$file_info'." >&2
-        fi
-
-        # Has its own output.
-        sudo mokutil --test-key "$base_dir/$mod_name.$PUB_KEY_EXT"
-    else
-        echo "$LOG_HEADER""$mod_name.$PUB_KEY_EXT is NOT a file in the $dir_adj directory."
+        echo "$LOG_HEADER""The given module seems to be signed."
     fi
 }
 
