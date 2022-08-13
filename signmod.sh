@@ -340,7 +340,10 @@ function test_cert() {
     fi
 
     # Check its state according to the MOK manager.
-    if sudo mokutil --test-key "$base_dir/$KEY_STEM.$PUB_KEY_EXT"; then
+    local cert_enrollment="$(sudo mokutil --test-key "$base_dir/$KEY_STEM.$PUB_KEY_EXT")"
+    echo "$cert_enrollment"
+
+    if [[ "$cert_enrollment" =~ is\senrolled$ ]]; then
         if [[ "$1" = "false" ]]; then
             echo "$LOG_HEADER""$KEY_STEM.$PUB_KEY_EXT in the base directory is"\
                 "known by the MOK manager."
