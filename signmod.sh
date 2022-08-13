@@ -291,13 +291,20 @@ function sign_mod() {
         mv -f "$base_dir/$mod_name.$PRIV_KEY_EXT.tmp" "$base_dir/$mod_name.$PRIV_KEY_EXT"
         echo "$LOG_HEADER""Done."
     fi
+# Generates a new public-private key pair.
+function gen_cert() {
+    # Generate the new key pair.
+    echo "$LOG_HEADER""Generating new signing keys..."
+    openssl req -new -x509 -outform DER -newkey rsa:"$key_size" -utf8 $ossl_encrypt\
+                -keyout "$base_dir/$KEY_STEM.$PRIV_KEY_EXT" -days "$cert_dur"\
+                -out "$base_dir/$KEY_STEM.$PUB_KEY_EXT" -"$sign_algo"\
+                -subj "/CN=$USER's MOK certificate/" $ossl_verbosity
+    echo "$LOG_HEADER""Done."
 
     # Register the certificate in the MOK keyring.
     echo "$LOG_HEADER""Registering keys to the MOK manager..."
-    sudo mokutil --import "$base_dir/$mod_name.$PUB_KEY_EXT"
-    echo -e "$LOG_HEADER""Done.\n"
-
-    echo "$LOG_HEADER""You should now reboot the system and enroll the new MOK."
+    sudo mokutil --import "$base_dir/$KEY_STEM.$PUB_KEY_EXT"
+    echo "$LOG_HEADER""Done."
 }
 
 # Tests the presence of a valid X.509 certificate at the default location and
