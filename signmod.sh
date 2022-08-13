@@ -41,7 +41,7 @@ dir_adj="default"
 key_size="4096"
 cert_dur="1825"
 sign_algo="sha512"
-ossl_encrypt="true"
+ossl_encrypt=""
 ossl_verbosity=""
 mok_verbosity="false"
 
@@ -161,7 +161,7 @@ while true; do
             continue
         ;;
         "-n" | "--no-encrypt")
-            ossl_encrypt="false"
+            ossl_encrypt="-noenc"
             shift
             continue
         ;;
