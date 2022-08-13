@@ -363,9 +363,15 @@ if [[ "$to_test" = "true" ]]; then
     echo "$LOG_HEADER""Done."
 else
     if ! test_cert true; then
+        cert_gen="true"
         mkdir --parents "$base_dir"
         gen_cert
     fi
 
     sign_mod
+
+    if [[ "$cert_gen" = "true" ]]; then
+        echo -e "\n$LOG_HEADER""A new certificate has been generated: you should"\
+            "now reboot the system in order to complete the MOK enrollment."
+    fi
 fi
