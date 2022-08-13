@@ -257,40 +257,19 @@ sudo mokutil --set-verbosity "$mok_verbosity"
 # Handles the signing itself.
 function sign_mod() {
     set -e
-    mkdir --parents "$base_dir"
+    local mod_file="$(modinfo --filename "$mod_name")"
 
-    # Delete an older key if it exists.
-    if [[ -f "$base_dir/$mod_name.$PUB_KEY_EXT" ]]\
-        && ! sudo mokutil --test-key "$base_dir/$mod_name.$PUB_KEY_EXT"
-    then
-        echo "$LOG_HEADER""Deleting $mod_name's previous signing key..."
-        sudo mokutil --delete "$base_dir/$mod_name.$PUB_KEY_EXT"
-        echo "$LOG_HEADER""Done."
-    fi
-
-    # Generate a new key pair.
-    echo "$LOG_HEADER""Generating new $mod_name signing keys..."
-    openssl req -new -x509 -newkey rsa:"$key_size" -keyout "$base_dir/$mod_name.$PRIV_KEY_EXT"\
-                -outform DER -out "$base_dir/$mod_name.$PUB_KEY_EXT" -nodes -days "$cert_dur"\
-                -subj "/CN=$mod_name kernel module signing key/" -utf8\
-                -"$sign_algo" $ossl_verbosity
-    echo "$LOG_HEADER""Done."
-
-    # Sign the module with it.
+    # Using OpenSSL directly is necessary in order to handle optional private
+    # key encryption.
     echo "$LOG_HEADER""Signing module..."
+    local tmp_priv_key_file="$(mktemp --tmpdir=/dev/shm/)"
+    openssl rsa -in "$base_dir/$KEY_STEM.$PRIV_KEY_EXT" -out "$tmp_priv_key_file" >/dev/null 2>&1
     sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file "$sign_algo"\
-        "$base_dir/$mod_name.$PRIV_KEY_EXT" "$base_dir/$mod_name.$PUB_KEY_EXT"\
-        "$(modinfo --filename $mod_name)"
+        "$tmp_priv_key_file" "$base_dir/$KEY_STEM.$PUB_KEY_EXT" "$mod_file"
+    rm "$tmp_priv_key_file"
     echo "$LOG_HEADER""Done."
+}
 
-    # Encrpyt the private key if requested.
-    if [[ "$ossl_encrypt" = "true" ]]; then
-        echo "$LOG_HEADER""Encrypting private key..."
-        openssl pkcs8 -in "$base_dir/$mod_name.$PRIV_KEY_EXT" -topk8\
-            -out "$base_dir/$mod_name.$PRIV_KEY_EXT.tmp"
-        mv -f "$base_dir/$mod_name.$PRIV_KEY_EXT.tmp" "$base_dir/$mod_name.$PRIV_KEY_EXT"
-        echo "$LOG_HEADER""Done."
-    fi
 # Generates a new public-private key pair.
 function gen_cert() {
     # Generate the new key pair.
