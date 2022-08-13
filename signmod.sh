@@ -383,8 +383,15 @@ function test_mod() {
 }
 
 
+# Main operation.
 if [[ "$to_test" = "true" ]]; then
+    test_cert false
     test_mod
 else
+    if ! test_cert true; then
+        mkdir --parents "$base_dir"
+        gen_cert
+    fi
+
     sign_mod
 fi
